@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Is my RAG better?</title>
+<style>
+:root{--bg:#fafaf8;--fg:#1c1c1a;--mut:#6b6b66;--card:#fff;--line:#dcdcd6;--acc:#1f5eff;--ok:#157a3c;--warn:#b25a00}
+@media(prefers-color-scheme:dark){:root{--bg:#161614;--fg:#ececE6;--mut:#9a9a92;--card:#1f1f1c;--line:#34342f;--acc:#7aa2ff;--ok:#5fd08a;--warn:#f0a050}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.5 system-ui,sans-serif}
+main{max-width:680px;margin:0 auto;padding:24px 16px 48px}h1{font-size:1.5rem;margin:0 0 4px}p.s{color:var(--mut);margin:0 0 20px}
+.c{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px;margin:0 0 16px}
+h2{font-size:1.05rem;margin:0 0 10px}label{display:block;font-size:.9rem;color:var(--mut);margin:8px 0 2px}
+input{width:100%;padding:8px;font:inherit;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--fg)}
+.g{display:grid;grid-template-columns:1fr 1fr;gap:10px}.r{font-size:1.1rem;margin-top:12px}.v{font-weight:600}
+.ok{color:var(--ok)}.warn{color:var(--warn)}small{color:var(--mut)}
+</style></head><body><main>
+<h1>Is my RAG better?</h1>
+<p class="s">Enter what you measured on the same questions. Nothing leaves this page.</p>
+
+<section class="c"><h2>1. How sure am I of one score?</h2>
+<div class="g"><div><label for="h">Questions answered correctly</label><input id="h" type="number" min="0" value="61"></div>
+<div><label for="n">Questions asked</label><input id="n" type="number" min="1" value="65"></div></div>
+<div class="r" id="o1"></div></section>
+
+<section class="c"><h2>2. Did system B really beat system A?</h2>
+<small>Same questions for both. Count each question once.</small>
+<div class="g"><div><label for="bb">Both right</label><input id="bb" type="number" min="0" value="50"></div>
+<div><label for="ww">Both wrong</label><input id="ww" type="number" min="0" value="2"></div>
+<div><label for="ao">Only A right</label><input id="ao" type="number" min="0" value="1"></div>
+<div><label for="bo">Only B right</label><input id="bo" type="number" min="0" value="12"></div></div>
+<div class="r" id="o2"></div></section>
+
+<small>Wilson interval for one score; exact two-sided sign test (McNemar) on the questions where the systems disagree. A "not shown" result means this test set cannot tell them apart, not that they are equal.</small>
+<script>
+const $=id=>document.getElementById(id),pc=x=>(x*100).toFixed(1)+"%";
+function wilson(h,n){const z=1.96,p=h/n,d=1+z*z/n,c=p+z*z/(2*n),m=z*Math.sqrt(p*(1-p)/n+z*z/(4*n*n));return[(c-m)/d,(c+m)/d]}
+function lg(n){let s=0;for(let i=2;i<=n;i++)s+=Math.log(i);return s}
+function binTail(k,n){// P(X<=k), X~Bin(n,.5)
+let t=0;for(let i=0;i<=k;i++)t+=Math.exp(lg(n)-lg(i)-lg(n-i)-n*Math.LN2);return Math.min(1,t)}
+function run(){
+const h=+$("h").value,n=+$("n").value;
+if(n>0&&h>=0&&h<=n){const[l,u]=wilson(h,n);$("o1").innerHTML=`Score <span class="v">${pc(h/n)}</span> &mdash; plausible true value between <span class="v">${pc(l)}</span> and <span class="v">${pc(u)}</span> (95%).`}else $("o1").textContent="Check the numbers.";
+const a=+$("ao").value,b=+$("bo").value,d=a+b;
+if(d<=0){$("o2").textContent="The systems never disagree: nothing to compare.";return}
+const p=Math.min(1,2*binTail(Math.min(a,b),d));
+const real=p<0.05;
+$("o2").innerHTML=`They disagree on <span class="v">${d}</span> questions: A wins ${a}, B wins ${b}. p = <span class="v">${p<0.001?"&lt;0.001":p.toFixed(3)}</span>.<br><span class="${real?"ok":"warn"} v">${real?"A difference between them is shown ("+(b>a?"B":"A")+" ahead).":"A difference is not shown on these questions."}</span>`}
+document.querySelectorAll("input").forEach(i=>i.addEventListener("input",run));run();
+</script></main></body></html>
